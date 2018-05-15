@@ -177,7 +177,7 @@ def fieldExists(driver, xPath):
 
     return field.text
 
-"""Since not all each fields can have multiple xPaths for different pages, it tests all known paths"""
+"""Since not all each fields can have the same xPath for different pages, it tests all known paths"""
 def testXPaths(driver, paths):
     field = ""
     for x in paths:

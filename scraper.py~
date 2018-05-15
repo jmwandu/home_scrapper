@@ -11,46 +11,6 @@ from selenium.common.exceptions import NoSuchElementException
 db = sqlite3.connect('./Info/housingDB.db')
 cursor = db.cursor()
 
-def cleanAddress(address):
-    delimiters = re.compile(r'\W+')
-    splitAddress = delimiters.split(address)
-    newAddress = splitAddress[0]
-    for txt in range(1, len( splitAddress ) ):
-        newAddress += "_"+splitAddress[txt]
-
-    return newAddress.lower()
-
-def YesNoFormat(query):
-
-        response = input (query)
-
-        while response.lower() not in ['y','n','yes','no']:
-            print("Please enter your answer in the form of yes or no")
-            response = input(query)
-
-        return response
-
-def fieldExists(driver, xPath):
-    
-    field = ""
-
-    try:
-        field = driver.find_element_by_xpath( xPath )
-
-    except: 
-         return "n/a"
-
-    return field.text
-
-def testXPaths(driver, paths):
-    field = ""
-    for x in paths:
-        field = fieldExists(driver, x )
-        if field != "n/a":
-            break
-
-    return field
-
 def collectHomeInfo( url, address ):
     saveQestion = "would you like to save this information (Y/N): "
     save = YesNoFormat( saveQestion )
@@ -182,25 +142,52 @@ def collectHomeInfo( url, address ):
 
     driver.close()
     driver.quit()
+
+"""Clears user delimitters from address"""
+def cleanAddress(address):
+    delimiters = re.compile(r'\W+')
+    splitAddress = delimiters.split(address)
+    newAddress = splitAddress[0]
+    for txt in range(1, len( splitAddress ) ):
+        newAddress += "_"+splitAddress[txt]
+
+    return newAddress.lower()
+
+"""Ensures the user always answer in a yes no format"""
+def YesNoFormat(query):
+
+        response = input (query)
+
+        while response.lower() not in ['y','n','yes','no']:
+            print("Please enter your answer in the form of yes or no")
+            response = input(query)
+
+        return response
+
+"""Test if a field exists on a page, if no provides deafult value"""
+def fieldExists(driver, xPath):
     
+    field = ""
 
-def displayHomeInfo( HomeData ):
-        
-    print( "The price of the house is: {}".format( HomeData['price'] ) )
-    print( "The year the home was built is: {}".format( HomeData['yearBuilt'] ) )
-    print( "The number of days the home has been listed is: {}".format( HomeData['daysListed'] ) )
-    print( "The estimated morage is: {}".format( HomeData['estMorgage'] ) )
-    print( "The home contains {} number of bed rooms".format( HomeData['beds'] ) )
-    print( "The home contains {} number of bathrooms".format( HomeData['bath'] ) )
-    print( "The estimated tax on the home is {}".format( HomeData['taxes'] ) )
-    print( "The home comes with a {} system".format( HomeData['cooling'] ) )
-    print( "The sqrt footage of the home is: {}".format( HomeData['sqrtfeet'] ) )
-    print( "This is a {}".format( HomeData['homeType'] ) )
-    print( "The realtor is {}".format( HomeData['realtor'] ) )
-    print( "The agent for the home is {}.".format( HomeData['agent'] ) )
-    print( "The number to contact the agent is ".format( HomeData['agentPhone'] ) )
-    print( "The home description is:\n{}".format( HomeData['des'] ) )
+    try:
+        field = driver.find_element_by_xpath( xPath )
 
+    except: 
+         return "n/a"
+
+    return field.text
+
+"""Since not all each fields can have multiple xPaths for different pages, it tests all known paths"""
+def testXPaths(driver, paths):
+    field = ""
+    for x in paths:
+        field = fieldExists(driver, x )
+        if field != "n/a":
+            break
+
+    return field
+
+"""scrapes all photos"""
 def collectPhotos( driver, response, address ):
     if response.lower() in ['yes', 'y']:
         try:
@@ -222,6 +209,7 @@ def collectPhotos( driver, response, address ):
            print ( "Aquired all images" )
            print( "Check the programs Images directory to view your potential home" )
 
+"""stores photos paths in images table"""
 def storeImgPath(address, name, path):
    
     cursor.execute(  "SELECT * FROM Images WHERE path = ?;", (path,) )
@@ -230,7 +218,7 @@ def storeImgPath(address, name, path):
     if entry is None:
         cursor.execute( "INSERT INTO Images values ( ?, ?, ?);", (path, name, address,) )
 
-
+"""stores collected data into info table"""
 def storeHouseInfo( homeData ):
     
     print(len( homeData['address']))
@@ -253,7 +241,7 @@ def storeHouseInfo( homeData ):
         print( "House data stored" )
     else:
         print( "House data already exists" )
-
+"""Deletes all tables entries of an address from the database and erases all associated pictures from images folder"""
 def deleteHouseData( address ):
     
     #Delete all photos for that house first
@@ -265,16 +253,19 @@ def deleteHouseData( address ):
 
     displayAllStoredAddresses()
 
+"""Displays all stored addresses"""
 def displayAllStoredAddresses():
     addressQuery = "SELECT Address from Info;"
     for address in  cursor.execute(addressQuery):
         print( address )
 
+"""displays the number of photos associated with an address"""
 def displayImageCount( address ):   
     cursor.execute( "SELECT * from Images where address =?;", ( address, ) )
     total =  len( cursor.fetchall() ) 
     print( "The total number of houses for address\n {}\n is {}".format( address, total ) )
 
+"""displays all kown information about an address"""
 def displayAddressInfo( address ):
         
     cursor.execute(  "SELECT * from Info where address = ?;", (address,) )
@@ -295,8 +286,7 @@ def displayAddressInfo( address ):
 
         displayHomeInfo( homeData )
 
-
-
+"""makes database tables if they don't exist"""
 def makeTables():
     housingDataquery = """CREATE TABLE IF NOT EXISTS Info(Address BLOB PRIMARY KEY, 
                         Price REAL, YearBuilt TEXT, DaysListed INTEGER, 
@@ -312,6 +302,24 @@ def makeTables():
                     REFERENCES Info( Address ));"""
 
     cursor.execute( imageQuery )
+    
+
+def displayHomeInfo( HomeData ):
+        
+    print( "The price of the house is: {}".format( HomeData['price'] ) )
+    print( "The year the home was built is: {}".format( HomeData['yearBuilt'] ) )
+    print( "The number of days the home has been listed is: {}".format( HomeData['daysListed'] ) )
+    print( "The estimated morage is: {}".format( HomeData['estMorgage'] ) )
+    print( "The home contains {} number of bed rooms".format( HomeData['beds'] ) )
+    print( "The home contains {} number of bathrooms".format( HomeData['bath'] ) )
+    print( "The estimated tax on the home is {}".format( HomeData['taxes'] ) )
+    print( "The home comes with a {} system".format( HomeData['cooling'] ) )
+    print( "The sqrt footage of the home is: {}".format( HomeData['sqrtfeet'] ) )
+    print( "This is a {}".format( HomeData['homeType'] ) )
+    print( "The realtor is {}".format( HomeData['realtor'] ) )
+    print( "The agent for the home is {}.".format( HomeData['agent'] ) )
+    print( "The number to contact the agent is ".format( HomeData['agentPhone'] ) )
+    print( "The home description is:\n{}".format( HomeData['des'] ) )
 
 def main():
     
